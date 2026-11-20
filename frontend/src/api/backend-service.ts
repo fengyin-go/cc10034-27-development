@@ -1,6 +1,12 @@
 import { request } from './client'
 import { moduleMeta } from '@/data/modules'
-import type { ActionResult, EntryRow, OverviewResult, PageResult } from '@/data/types'
+import type {
+  ActionResult,
+  EntryRow,
+  IntervalRecord,
+  OverviewResult,
+  PageResult,
+} from '@/data/types'
 
 export { moduleMeta }
 
@@ -29,12 +35,34 @@ export async function runAction(
   key: string,
   id: number,
   action: string,
+  values: Record<string, string> = {},
 ): Promise<ActionResult> {
   const response = await request(`/api/${key}/${id}/actions`, {
     method: 'POST',
-    body: JSON.stringify({ action }),
+    body: JSON.stringify({ action, values }),
   })
   return await response.json()
+}
+
+export async function fetchIntervalRecord(taskId: number): Promise<IntervalRecord | null> {
+  const response = await request(`/api/backfill_position/ledger/${taskId}`)
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error('回填区间留档读取失败')
+  return await response.json()
+}
+
+export async function listIntervalRecords(): Promise<IntervalRecord[]> {
+  const response = await request('/api/backfill_position/ledger')
+  if (!response.ok) throw new Error('回填区间留档读取失败')
+  const payload = (await response.json()) as { items: IntervalRecord[] }
+  return payload.items
+}
+
+export async function confirmEndpoints(
+  positionEntryId: number,
+  values: Record<string, string>,
+): Promise<ActionResult> {
+  return runAction('position_store', positionEntryId, '确认端点', values)
 }
 
 export async function downloadEntries(

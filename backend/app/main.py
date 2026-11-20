@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routers import ROUTERS
+from app.services import service_for
 from app.store import store
 
 app = FastAPI(title="实时数仓CDC变更捕获中心", version="1.0.0")
@@ -32,6 +33,16 @@ def health() -> dict[str, object]:
 def overview() -> dict[str, object]:
     """运营概览：把各业务模块的待处理量汇总成看板卡片。"""
     return store.overview()
+
+
+def bootstrap() -> None:
+    """启动时为既有回填任务补齐接单区间留档，保证历史任务可持久查询。"""
+    service = service_for("backfill_position")
+    if service is not None:
+        service.bootstrap_records()
+
+
+bootstrap()
 
 
 # 资源路由含 /api/{module}，必须放在 health / overview 之后注册，

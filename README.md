@@ -62,6 +62,23 @@ npm run dev
 | 去重窗口 | `dedup_window` | 窗口配置 | 配置名称、去重键、窗口大小 |
 | 路由分发 | `route_dispatcher` | 路由规则 | 规则名称、匹配条件、目标通道 |
 | 回填位点 | `backfill_position` | 回填任务 | 任务名称、源位点、目标位点 |
+
+### 回填区间留档
+
+回填任务接单时，会把「源实例 + Binlog + 两个已确认端点 + 接单原范围」写成一份
+不可变的区间记录（`backend/app/services/backfill_ledger.py`），任务重开后只领取
+未覆盖的日志，并把每一段标成「原范围」或「延伸段」。
+
+- `POST /api/position_store/{id}/actions`，`{"action":"确认端点","values":{"结束端点":"1200"}}`
+  端点只能向后连续延伸，重复/过期提交只追加未覆盖的尾部区间。
+- `POST /api/backfill_position/{id}/actions`，`{"action":"重新打开回填"}` 恢复领取资格，
+  原范围、确认范围和已领取记录保持不变。
+- `POST /api/backfill_position/{id}/actions`，`{"action":"领取下一段"}` 领取未覆盖日志，
+  返回每段的 `segment_kind`（原范围 / 延伸段）。
+- `GET /api/backfill_position/ledger/{task_id}` 查询区间记录、确认记录和版本历史；
+  `GET /api/position_store/confirmations?instance=...` 查询端点确认留档。
+- 回填位点工作台下方的「回填区间留档」面板提供同样的查询与操作入口。
+
 | 延迟监控 | `lag_monitor` | 延迟指标 | 指标时间、所属通道、延迟秒数 |
 | 快照比对 | `snapshot_compare` | 比对报告 | 报告名称、源表名、目标表名 |
 | 事件过滤 | `event_filter` | 过滤规则 | 规则名称、过滤类型、匹配表达式 |

@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any
 
 from app.services.base import BaseModuleService
+from app.services.backfill_ledger import LedgerError, ledger
 from app.pipeline import PositionSnapshot, pipeline_bus
 
 
@@ -23,6 +24,36 @@ class PositionStoreService(BaseModuleService):
     STATUS_ORDER = ["当前位点", "历史位点", "归档位点"]
     ACTION_RULES = {"标记历史": "当前位点", "归档位点": "历史位点"}
     NEGATIVE_ACTIONS = []
+    PARAM_ACTIONS = {"确认端点": "登记源实例的两个已确认端点并留档回填区间"}
+
+    def run_param_action(self, entry_id: int, action: str,
+                         params: dict[str, Any]) -> dict[str, Any]:
+        entry = self.get_entry(entry_id)
+        if entry is None:
+            return {"ok": False, "message": f"{self.ENTITY} {entry_id} 不存在或已归档",
+                    "entry": None}
+        if action == "确认端点":
+            instance = str(params.get("源实例") or entry.get("数据库实例") or "").strip()
+            binlog_name = str(params.get("Binlog名称") or entry.get("Binlog名称") or "").strip()
+            try:
+                result = self.confirm_endpoints(
+                    instance,
+                    binlog_name,
+                    end_pos=params.get("结束端点") or params.get("端点"),
+                    start_pos=params.get("起始端点"),
+                    expected_end=params.get("期望端点"),
+                    note=str(params.get("备注") or ""),
+                )
+            except LedgerError as exc:
+                return {"ok": False, "message": str(exc), "entry": entry}
+            # 位点记录同步成最新确认端点，避免位点值和确认记录脱节。
+            entry["位点值"] = str(result["confirmed_range"]["end"])
+            entry["更新时间"] = datetime.now().date().isoformat()
+            entry["位点来源"] = "端点确认"
+            result["entry"] = entry
+            return result
+        entry, message = self.run_action(entry_id, action)
+        return {"ok": entry is not None, "message": message, "entry": entry}
 
     def save_position(self, instance: str, binlog_name: str, position: int,
                       gtid_set: str = "", source: str = "manual") -> PositionSnapshot:
@@ -42,6 +73,52 @@ class PositionStoreService(BaseModuleService):
             "position_store", "已记录"
         )
         return ps
+
+    def confirm_endpoints(self, instance: str, binlog_name: str, end_pos: Any,
+                          start_pos: Any = None, expected_end: Any = None,
+                          note: str = "") -> dict[str, Any]:
+        """登记源实例的两个已确认端点，并把结果留档到回填区间台账。
+
+        端点向后延伸时，台账只接纳尚未覆盖的尾部区间；回填还在处理旧范围时
+        重复提交同一端点会被忽略，不会重复覆盖已领过的日志。
+        """
+        result = ledger.confirm_endpoints(
+            instance=instance,
+            binlog_name=binlog_name,
+            start_pos=start_pos,
+            end_pos=end_pos,
+            expected_end=expected_end,
+            note=note,
+            source="position_store",
+        )
+        pipeline_bus.write_audit(
+            "端点确认", f"{instance}:{binlog_name}",
+            f"{result['message']}，确认范围 {result['confirmed_range']['label']}",
+            "position_store", "已记录"
+        )
+        return result
+
+    def query_confirmed_endpoints(self, instance: str,
+                                  binlog_name: str | None = None) -> dict[str, Any]:
+        """查询实例（可按 Binlog 过滤）已确认的端点与留档记录。"""
+        confirmations = ledger.list_confirmations(instance, binlog_name)
+        accepted = [
+            item for item in confirmations
+            if item["accepted_start"] is not None
+        ]
+        bounds = None
+        if accepted:
+            bounds = {
+                "start": min(int(item["accepted_start"]) for item in accepted),
+                "end": max(int(item["accepted_end"]) for item in accepted),
+            }
+        return {
+            "instance": instance,
+            "binlog_name": binlog_name,
+            "confirmed": bounds,
+            "confirmations": confirmations,
+            "records": ledger.list_records(instance=instance),
+        }
 
     def query_current_position(self, instance: str) -> dict[str, Any]:
         """查询指定实例的当前位点。"""

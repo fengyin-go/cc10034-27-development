@@ -70,6 +70,13 @@
       </tbody>
     </table>
 
+    <BackfillIntervalPanel
+      v-if="meta.key === 'backfill_position'"
+      :rows="rows"
+      :task-id="focusedTaskId"
+      @changed="handleIntervalChanged"
+    />
+
     <div v-if="showCreate" class="modal-backdrop" data-testid="create-modal">
       <form class="modal" @submit.prevent="submitCreate">
         <h3>登记{{ meta.entity }}</h3>
@@ -103,6 +110,7 @@ import {
   moduleMeta,
   runAction as applyAction,
 } from '@/api/backend-service'
+import BackfillIntervalPanel from '@/components/BackfillIntervalPanel.vue'
 import type { EntryRow } from '@/data/types'
 
 const props = defineProps<{ moduleKey: string }>()
@@ -110,6 +118,7 @@ const meta = moduleMeta(props.moduleKey)
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
 const errorMessage = ref('')
+const focusedTaskId = ref(0)
 const filters = ref<Record<string, string>>({})
 const filterFields = meta.fields.slice(0, 3)
 const showCreate = ref(false)
@@ -170,10 +179,17 @@ async function runAction(action: string, row: EntryRow) {
   try {
     const result = await applyAction(meta.key, Number(row.id), action)
     if (!result.ok) throw new Error(result.message)
+    if (meta.key === 'backfill_position') focusedTaskId.value = Number(row.id)
     await reload()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '操作失败'
   }
+}
+
+function handleIntervalChanged(row: EntryRow | null) {
+  if (meta.key !== 'backfill_position') return
+  void reload()
+  if (row) focusedTaskId.value = Number(row.id)
 }
 
 async function reload() {

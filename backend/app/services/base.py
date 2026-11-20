@@ -14,6 +14,9 @@ class BaseModuleService:
     STATUS_ORDER: list[str] = []
     ACTION_RULES: dict[str, str] = {}
     NEGATIVE_ACTIONS: list[str] = []
+    # 需要业务参数的动作（action -> 说明）。路由层会把 values 透传给 run_param_action，
+    # 未声明在这里的动作仍然走 run_action 的纯状态流转。
+    PARAM_ACTIONS: dict[str, str] = {}
 
     def list_entries(
         self,
@@ -70,6 +73,12 @@ class BaseModuleService:
         entry["pending"] = target != self.STATUS_ORDER[-1]
         entry["abnormal"] = action in self.NEGATIVE_ACTIONS
         return entry, f"{self.ENTITY}已{action}"
+
+    def run_param_action(self, entry_id: int, action: str,
+                         params: dict[str, Any]) -> dict[str, Any]:
+        """参数型动作的默认实现：不是本模块的参数动作就交回普通动作。"""
+        entry, message = self.run_action(entry_id, action)
+        return {"ok": entry is not None, "message": message, "entry": entry}
 
     def domain_snapshot(self) -> dict[str, Any]:
         """输出模块级数据质量快照，供跨模块消费和题位源码锚点使用。"""

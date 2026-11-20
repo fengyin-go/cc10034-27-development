@@ -70,3 +70,32 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .analysis-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 12px 0; }
 .analysis-bar { flex: 1; border-radius: 4px 4px 0 0; background: var(--brand); min-width: 24px; position: relative; transition: height 0.4s; }
 .analysis-bar span { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--muted); white-space: nowrap; }
+/* 回填区间留档面板 */
+.interval-panel { margin: 20px 0; padding: 16px; background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+.interval-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.interval-head h3 { margin: 0; font-size: 15px; }
+.interval-sub { margin: 4px 0 0; color: var(--muted); font-size: 12px; max-width: 620px; }
+.interval-head-actions { display: flex; gap: 8px; align-items: flex-end; }
+.interval-pick span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.interval-pick select { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; min-width: 220px; }
+.interval-message { color: #15803d; font-size: 13px; margin: 10px 0 0; }
+.interval-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 12px 0; }
+.interval-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #fafbfc; }
+.interval-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.interval-card strong { font-size: 14px; }
+.ok-text { color: #15803d; }
+.interval-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+.interval-confirm { display: flex; gap: 8px; align-items: flex-end; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 8px; }
+.interval-confirm label span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.interval-confirm input { width: 130px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+.interval-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.interval-block { margin-bottom: 14px; }
+.interval-block h4 { margin: 0 0 6px; font-size: 13px; }
+.data-table.compact th, .data-table.compact td { padding: 6px 8px; font-size: 12px; }
+.kind-original { color: #1f6feb; }
+.kind-extension { color: #b45309; font-weight: 600; }
+.kind-prefix { color: #7c3aed; }
+.interval-history { margin: 0; padding-left: 20px; font-size: 12px; color: #334155; }
+.interval-history li { margin-bottom: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+.interval-reason { color: var(--brand); }
+.interval-hint { display: block; margin-top: 4px; font-size: 11px; color: #b45309; }
